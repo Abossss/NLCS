@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于自然语言处理的智能客服</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 20px auto;
+            width: 90%;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+            font-size: 15px;
+            line-height: 1.4;
+            transition: all 0.2s ease;
+        }
+        .received {
+            background-color: #f0f4ff;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .sent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+        #send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 12px 24px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        #send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .logout-link {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .logout-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="{{ url_for('home') }}" class="btn btn-outline-light" style="position: fixed; top: 10px; left: 10px; z-index: 1000; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <i class="bi bi-house-door"></i> 返回主界面
+        </a>
+        <h2>基于自然语言处理的智能客服系统, <span id="username">{{ username }}</span>!</h2>
+    </div>
+    
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <!-- 示例消息 -->
+            <div class="message received">
+                <strong>AI:</strong> 您好，有什么可以帮您!
+            </div>
+            <!-- 更多消息将通过JavaScript动态添加 -->
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+    
+    <div class="logout-link">
+        <a href="/logout">Logout</a>
+    </div>
+
+    <script>
+        // 简单的聊天功能实现
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const messagesContainer = document.getElementById('messages');
+            
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                    // 创建新消息元素
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'message sent';
+                    messageElement.textContent = message;
+                    messagesContainer.appendChild(messageElement);
+                    
+                    // 清空输入框并滚动到底部
+                    messageInput.value = '';
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // 发送消息到后端API
+                    fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({message: message})
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 显示AI回复
+                        const aiMessageElement = document.createElement('div');
+                        aiMessageElement.className = 'message received';
+                        aiMessageElement.innerHTML = `<strong>AI:</strong> ${data.response}`;
+                        messagesContainer.appendChild(aiMessageElement);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const errorElement = document.createElement('div');
+                        errorElement.className = 'message received';
+                        errorElement.innerHTML = `<strong>Error:</strong> 请求失败，请重试`;
+                        messagesContainer.appendChild(errorElement);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    });
+                }
+            }
+            
+            // 发送消息的两种方式
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
